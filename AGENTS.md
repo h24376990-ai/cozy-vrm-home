@@ -28,3 +28,10 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Virtual world game
+- Game lives in `src/game/`; `VirtualWorld` is the single embeddable entry component (for later chat-app integration).
+- Rules (plant growth, chat parsing, move planning, seeded towns) stay in `src/game/logic.ts` with no React/three imports, covered by `logic.test.ts`.
+- State is a persisted zustand store (`src/game/store.ts`); visiting/invite permission is simulated client-side until a real backend replaces `seededTown`/`simulateEntry`.
+- 3D avatar is swapped via `AvatarModel` (`config.modelUrl` → GLB), so procedural body code is a fallback, not the contract.
+- Avatars are VRM (@pixiv/three-vrm) driven via normalized humanoid bones; pose math lives in src/game/vrm/vrmPose.ts and uploaded VRMs persist in IndexedDB — keeps rendering separate from rules and large files out of localStorage.
