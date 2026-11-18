@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_AVATAR, DEFAULT_FURNITURE, FURNITURE_CATALOG, HOUSES, PLOT_COUNT, SPECIAL_POOL, START_POINTS } from "./catalog";
 import { formatElapsed, makeInviteCode, plantGrowth, seededTown } from "./logic";
-import type { AvatarConfig, ClothingDesign, FurnitureItem, FurnitureType, MotionClip, VisitState } from "./types";
+import type { AvatarConfig, AvatarSlot, StudioMotion, ClothingDesign, FurnitureItem, FurnitureType, MotionClip, VisitState } from "./types";
 
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 
@@ -18,6 +18,12 @@ interface GameState {
   lastClosedAt: number;
   clothing: ClothingDesign[];
   motions: MotionClip[];
+  avatarSlots: AvatarSlot[];
+  studioMotions: StudioMotion[];
+  liveTexture: string | null;
+  saveAvatarSlot: (index: number) => void;
+  loadAvatarSlot: (index: number) => void;
+  saveStudioMotion: (motion: StudioMotion) => void;
   // セッション（保存しない）
   view: "town" | "home";
   visiting: VisitState | null;
@@ -65,6 +71,17 @@ export const useGame = create<GameState>()(
       lastClosedAt: 0,
       clothing: [],
       motions: [],
+      avatarSlots: [],
+      studioMotions: [],
+      liveTexture: null,
+      saveAvatarSlot: (index) => {
+        const slots = [...get().avatarSlots];
+        slots[index] = { id: String(index), name: `スロット ${index + 1}`, config: { ...get().avatar } };
+        set({ avatarSlots: slots });
+        get().notify(`スロット ${index + 1}に保存しました`);
+      },
+      loadAvatarSlot: (index) => { const slot = get().avatarSlots[index]; if (slot) set({ avatar: { ...slot.config } }); },
+      saveStudioMotion: (motion) => set({ studioMotions: [...get().studioMotions.filter(m => m.id !== motion.id), motion] }),
       view: "town",
       visiting: null,
       toast: null,
@@ -181,8 +198,8 @@ export const useGame = create<GameState>()(
     }),
     {
       name: "vw-game-v1",
-      partialize: ({ view, visiting, toast, ...rest }) => {
-        void view; void visiting; void toast;
+      partialize: ({ view, visiting, toast, liveTexture, ...rest }) => {
+        void view; void visiting; void toast; void liveTexture;
         return Object.fromEntries(Object.entries(rest).filter(([, v]) => typeof v !== "function")) as Partial<GameState>;
       },
     },

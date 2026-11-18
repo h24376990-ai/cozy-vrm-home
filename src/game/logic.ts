@@ -165,3 +165,18 @@ export function makeInviteCode(rand: () => number = Math.random): string {
   for (let i = 0; i < 6; i++) s += chars[Math.floor(rand() * chars.length)];
   return s;
 }
+
+export type HomeZone = "living" | "hallway" | "studio";
+export const STUDIO_POINT: [number, number] = [0, -10.5];
+export const WALK_SPEED = 2.8;
+export function homeZone(z: number): HomeZone { return z < -8 ? "studio" : z < -5 ? "hallway" : "living"; }
+export function studioEditingAllowed(z: number, readOnly: boolean) { return !readOnly && homeZone(z) === "studio"; }
+export function homePath(from: [number, number], to: [number, number]): [number, number][] {
+  if ((from[1] < -5) === (to[1] < -5)) return [to];
+  return from[1] >= -5 ? [[0, -3.5], [0, -5.5], [0, -8.5], to] : [[0, -8.5], [0, -5.5], [0, -3.5], to];
+}
+export function walkStep(position: [number, number], target: [number, number], dt: number): [number, number] {
+  const dx = target[0] - position[0], dz = target[1] - position[1], distance = Math.hypot(dx, dz);
+  const step = Math.min(distance, WALK_SPEED * dt);
+  return distance < 0.001 ? target : [position[0] + dx / distance * step, position[1] + dz / distance * step];
+}

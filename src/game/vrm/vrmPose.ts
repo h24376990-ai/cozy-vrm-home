@@ -1,5 +1,5 @@
 // ポーズ → VRM正規化ボーン回転（React/three非依存の純粋計算）
-import type { Pose } from "../types";
+import type { Pose, StudioFrame } from "../types";
 
 export interface PoseAngles {
   rootY: number; rootRX: number;
@@ -21,6 +21,8 @@ export function poseAngles(pose: Pose, t: number): PoseAngles {
     }
     case "sit":
       lt = rt = -Math.PI / 2; lk = rk = Math.PI / 2; la = ra = -0.5; hx = 0.05 + breathe; break;
+    case "knees":
+      rootY = -0.68; lt = rt = -2.15; lk = rk = 2.55; la = ra = -1.1; hx = 0.16; break;
     case "sleep":
       rootRX = -Math.PI / 2; laz = 0.15; raz = -0.15; break;
     case "burn":
@@ -49,4 +51,21 @@ export function vrmScale(heightCm: number, widthFactor: number, naturalHeight: n
   const y = heightCm / 100 / Math.max(0.1, naturalHeight);
   const w = 0.7 + widthFactor * 0.3;
   return { x: y * w, y, z: y * w };
+}
+
+export function sampleStudioMotion(frames: StudioFrame[], time: number): PoseAngles {
+  if (!frames.length) return poseAngles("stand", time);
+  const total = frames.reduce((s, f) => s + f.duration, 0);
+  let t = ((time % total) + total) % total;
+  let index = 0;
+  while (index < frames.length - 1 && t >= (frames[index]?.duration ?? 1)) { t -= frames[index]?.duration ?? 1; index++; }
+  const frame = frames[index];
+  if (!frame) return poseAngles("stand", time);
+  const prev = frames[(index + frames.length - 1) % frames.length] ?? frame;
+  const a = poseAngles(prev.pose, time), b = poseAngles(frame.pose, time);
+  b.rootRX += frame.bend; b.la += frame.arm; b.ra += frame.arm;
+  a.rootRX += prev.bend; a.la += prev.arm; a.ra += prev.arm;
+  const u = Math.min(1, t / Math.min(0.65, frame.duration));
+  const smooth = u * u * (3 - 2 * u);
+  return Object.fromEntries(Object.keys(a).map(key => [key, a[key as keyof PoseAngles] + (b[key as keyof PoseAngles] - a[key as keyof PoseAngles]) * smooth])) as unknown as PoseAngles;
 }

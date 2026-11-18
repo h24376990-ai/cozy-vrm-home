@@ -12,19 +12,19 @@ function open(): Promise<IDBDatabase> {
     r.onerror = () => rej(r.error);
   });
 }
-export async function saveVrm(file: Blob) {
+export async function saveVrm(file: Blob, key = "custom") {
   const db = await open();
   await new Promise<void>((res, rej) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(file, "custom");
+    tx.objectStore(STORE).put(file, key);
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
 }
-export async function loadVrm(): Promise<Blob | null> {
+export async function loadVrm(key = "custom"): Promise<Blob | null> {
   const db = await open();
   return new Promise((res, rej) => {
-    const r = db.transaction(STORE).objectStore(STORE).get("custom");
+    const r = db.transaction(STORE).objectStore(STORE).get(key);
     r.onsuccess = () => res((r.result as Blob) ?? null);
     r.onerror = () => rej(r.error);
   });

@@ -1,6 +1,6 @@
 // 仮想空間ゲームの共通データ構造（後で外部チャットアプリ・AI・スタジオ機能と接続するための受け皿）
 export type FurnitureType = "bed" | "sofa" | "kitchen" | "plant" | "table" | "lamp" | "special";
-export type Pose = "stand" | "walk" | "sit" | "sleep" | "burn" | "look" | "wave" | "dance";
+export type Pose = "stand" | "walk" | "sit" | "sleep" | "burn" | "look" | "wave" | "dance" | "knees";
 
 export interface FurnitureItem {
   uid: string;
@@ -70,6 +70,10 @@ export interface MotionClip {
   keyframes: { t: number; bone: string; rotation: [number, number, number] }[];
   createdAt: number;
 }
+
+export interface AvatarSlot { id: string; name: string; config: AvatarConfig }
+export interface StudioFrame { pose: Pose; duration: number; bend: number; arm: number }
+export interface StudioMotion { id: string; name: string; frames: StudioFrame[] }
 
 export type EntryStatus = "none" | "pending" | "granted" | "denied";
 export interface VisitState {

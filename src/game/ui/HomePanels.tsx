@@ -91,9 +91,10 @@ function VrmPicker() {
     if (!/\.vrm$/i.test(f.name)) return notify(".vrm ファイルを選んでください");
     setBusy(true);
     try {
-      await saveVrm(f);
+      const key = crypto.randomUUID();
+      await saveVrm(f, key);
       // 参照を一度切り替えて再読み込みさせる
-      up({ modelUrl: `${CUSTOM_VRM_REF}#${Date.now()}` });
+      up({ modelUrl: `idb:${key}` });
       notify(`「${f.name}」を読み込みました`);
     } catch {
       notify("VRMの保存に失敗しました");

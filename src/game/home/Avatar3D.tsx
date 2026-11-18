@@ -6,13 +6,14 @@ import { VRMLoaderPlugin, VRMUtils, type VRM } from "@pixiv/three-vrm";
 import { DEFAULT_AVATAR } from "../catalog";
 import { avatarDims } from "../logic";
 import { useGame } from "../store";
-import { ARM_DROP, poseAngles, vrmScale } from "../vrm/vrmPose";
+import { ARM_DROP, poseAngles, sampleStudioMotion, vrmScale } from "../vrm/vrmPose";
 import { DEFAULT_VRM_URL, loadVrm } from "../vrm/vrmStorage";
-import type { AvatarConfig, Pose } from "../types";
+import type { AvatarConfig, Pose, StudioFrame } from "../types";
 
 export interface AvatarModelProps {
   config: AvatarConfig;
   pose: Pose;
+  motion?: StudioFrame[] | null;
 }
 
 /** config.modelUrl があればそのVRM、なければ初期VRM（public/default-avatar.vrm）を表示 */
@@ -35,7 +36,7 @@ function useResolvedUrl(ref: string) {
     if (!ref.startsWith("idb:")) { setUrl(ref); return; }
     let obj: string | null = null;
     let alive = true;
-    loadVrm().then((b) => {
+    loadVrm(ref.slice(4).split("#")[0]).then((b) => {
       if (!alive) return;
       if (!b) { setUrl(DEFAULT_VRM_URL); return; }
       obj = URL.createObjectURL(b);
@@ -55,11 +56,12 @@ class VrmErrorBoundary extends Component<{ fallback: ReactNode; children: ReactN
 
 const CLOTH_RE = /cloth|tops|bottom|outfit|onepiece|shirt|dress|skirt|pants|jacket|coat|服/i;
 
-function VrmHuman({ url, config, pose }: AvatarModelProps & { url: string }) {
+function VrmHuman({ url, config, pose, motion }: AvatarModelProps & { url: string }) {
   const gltf = useLoader(GLTFLoader, url, (l) => l.register((p) => new VRMLoaderPlugin(p)));
   const vrm = gltf.userData["vrm"] as VRM;
   const clothing = useGame((s) => s.clothing);
-  const tex = clothing.find((c) => c.id === config.clothingId)?.textureUrl;
+  const liveTexture = useGame((s) => s.liveTexture);
+  const tex = liveTexture || clothing.find((c) => c.id === config.clothingId)?.textureUrl;
 
   const natural = useMemo(() => {
     VRMUtils.rotateVRM0(vrm);
@@ -120,8 +122,11 @@ function VrmHuman({ url, config, pose }: AvatarModelProps & { url: string }) {
   }, [vrm, sc.y]);
 
   useFrame(({ clock }, delta) => {
-    const a = poseAngles(pose, clock.getElapsedTime());
+    const a = motion ? sampleStudioMotion(motion, clock.getElapsedTime()) : poseAngles(pose, clock.getElapsedTime());
     const h = vrm.humanoid;
+    vrm.expressionManager?.setValue("happy", config.mouth === "smile" ? 0.5 : 0);
+    vrm.expressionManager?.setValue("aa", config.mouth === "open" ? 0.5 : 0);
+    vrm.expressionManager?.setValue("blink", config.eyes === "sleepy" ? 0.6 : config.eyes === "narrow" ? 0.25 : 0);
     const b = (n: Parameters<typeof h.getNormalizedBoneNode>[0]) => h.getNormalizedBoneNode(n);
     const setX = (n: Parameters<typeof b>[0], x: number) => { const o = b(n); if (o) o.rotation.set(x, 0, 0); };
     setX("leftUpperLeg", a.lt); setX("rightUpperLeg", a.rt);
